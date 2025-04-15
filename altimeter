@@ -1,0 +1,146 @@
+#include <Wire.h>
+#include <Servo.h>
+
+
+// BMP180 I2C address
+#define BMP180_ADDRESS 0x77
+
+
+// Servo
+Servo servo;
+#define SERVO_PIN 9
+
+
+// Ultrasonic
+#define TRIG_PIN 7
+#define ECHO_PIN 6
+
+
+bool hasReachedAltitude = false;
+bool hasLanded = false;
+
+
+const float targetAltitude = 10.0; // meters
+const float landingThreshold = 0.5; // meters
+
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(13, OUTPUT);
+
+
+  servo.attach(SERVO_PIN);
+  servo.write(0);
+
+
+  if (!bmp180Init()) {
+    Serial.println("BMP180 not found!");
+    while (1);
+  }
+
+
+  Serial.println("System ready. Waiting for drop...");
+}
+
+
+void loop() {
+  float pressure = readPressure();
+  float currentAltitude = calculateAltitude(pressure);
+  float groundDistance = readUltrasonicDistance();
+
+
+  Serial.print("Altitude: ");
+  Serial.print(currentAltitude);
+  Serial.print(" m | Ground Distance: ");
+  Serial.print(groundDistance);
+  Serial.println(" m");
+
+
+  if (!hasReachedAltitude && currentAltitude >= targetAltitude) {
+    Serial.println("Target altitude reached!");
+    digitalWrite(13, HIGH);
+    hasReachedAltitude = true;
+
+
+    servo.write(30);
+    Serial.println("Servo rotated to 30 degrees.");
+  }
+
+
+  if (hasReachedAltitude && !hasLanded && groundDistance <= landingThreshold) {
+    Serial.println("Landing detected!");
+    digitalWrite(13, LOW);
+    hasLanded = true;
+  }
+
+
+  delay(500);
+}
+
+
+float readUltrasonicDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  float distance_cm = duration * 0.034 / 2;
+  return distance_cm / 100.0;
+}
+
+
+// === BMP180 Raw Pressure Reading ===
+bool bmp180Init() {
+  Wire.beginTransmission(BMP180_ADDRESS);
+  return Wire.endTransmission() == 0;
+}
+
+
+int32_t readRawPressure() {
+  Wire.beginTransmission(BMP180_ADDRESS);
+  Wire.write(0xF4);
+  Wire.write(0x34); // request pressure measurement
+  Wire.endTransmission();
+  delay(10); // wait for conversion
+
+
+  Wire.beginTransmission(BMP180_ADDRESS);
+  Wire.write(0xF6);
+  Wire.endTransmission();
+  Wire.requestFrom(BMP180_ADDRESS, 3);
+
+
+  int32_t msb = Wire.read();
+  int32_t lsb = Wire.read();
+  int32_t xlsb = Wire.read();
+
+
+  return ((msb << 16) + (lsb << 8) + xlsb) >> 8;
+}
+
+
+// === Simplified Altitude Calculation ===
+// Using standard sea-level pressure: 101325 Pa
+float readPressure() {
+  int32_t raw = readRawPressure();
+  // This is a fake simplified pressure scale just to demo the idea
+  return raw * (1.0 / 1.2); // Adjust scaling as needed
+}
+
+
+float calculateAltitude(float pressure) {
+  // Simplified formula assuming sea level pressure = 101325 Pa
+  return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903));
+}
+
+
+
+
