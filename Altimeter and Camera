@@ -43,7 +43,7 @@ void setup() {
   // Setup pins
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
-  pinMode(13, OUTPUT);          // Built-in LED on most Arduinos
+  pinMode(13, OUTPUT);          // Built-in LED on Arduino
 
   servo.attach(SERVO_PIN);      // Hook up the servo
   servo.write(0);               // Set it to the start position
@@ -61,10 +61,10 @@ void setup() {
   }
 
   // Set up the camera
-  myCAM.set_format(JPEG);                           // We're taking JPEG photos
+  myCAM.set_format(JPEG);                           // We're taking the photos in JPEG format
   myCAM.InitCAM();                                  // Initialize camera
-  myCAM.OV2640_set_JPEG_size(OV2640_640x480);       // Set photo size (pretty good)
-  delay(1000); // wait a sec
+  myCAM.OV2640_set_JPEG_size(OV2640_640x480);       // Set photo size
+  delay(1000); // delay a little
 
   Serial.println("System ready. Waiting for liftoff!");
 }
@@ -73,7 +73,7 @@ void setup() {
 
 void loop() {
   float pressure = readPressure();                       // Read air pressure
-  float currentAltitude = calculateAltitude(pressure);   // Turn pressure into height
+  float currentAltitude = calculateAltitude(pressure);   // Calculate altitude through pressure variable
   float groundDistance = readUltrasonicDistance();       // Read how far we are from the ground
 
   // Print some info to the Serial Monitor
@@ -81,7 +81,7 @@ void loop() {
   Serial.print(currentAltitude);
   Serial.print(" m | Ground Distance: ");
   Serial.print(groundDistance);
-  Serial.println(" m");
+  Serial.println(" m"); // In meters
 
   // If we're high enough and haven't triggered yet...
   if (!hasReachedAltitude && currentAltitude >= targetAltitude) {
@@ -93,8 +93,8 @@ void loop() {
     Serial.println("Servo moved!");
 
     if (!hasCapturedPhoto) {
-      Serial.println("Say cheese! Taking a photo...");
-      capturePhoto();         // Take the pic!
+      Serial.println("Taking a photo...");
+      capturePhoto();         // Take photo
       hasCapturedPhoto = true;
     }
   }
@@ -103,7 +103,7 @@ void loop() {
   if (hasReachedAltitude && !hasLanded && groundDistance <= landingThreshold) {
     Serial.println("Touchdown! We're back on the ground.");
     digitalWrite(13, LOW);    // Turn off LED
-    hasLanded = true;
+    hasLanded = true; // Now let program know we have landed
   }
 
   delay(1000); // wait 1 second before looping again
