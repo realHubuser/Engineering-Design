@@ -28,12 +28,13 @@ ArduCAM myCAM(OV2640, CS_PIN);       // Using an OV2640 cam, adjust if needed
 const float targetAltitude = 10.0;   // Target altitude is defined as 10 meters
 const float landingThreshold = 0.5;  // When we're 0.5 meters from ground = landed
 
-// ========== Status Flags ==========
+// ========== Set Conditions ==========
 bool hasReachedAltitude = false;    // Set condition to detect if we have reached altitude
 bool hasLanded = false;             // Set condition to detect if we have landed
 bool hasCapturedPhoto = false;      // Set condition to detect if we have taken the photo
 
 // ========== SETUP ==========
+//Pins, pressure, SD card, and Camera before liftoff
 
 void setup() {
   Serial.begin(115200);         // Start talking to computer
@@ -70,6 +71,7 @@ void setup() {
 }
 
 // ========== LOOP ==========
+//Here is the loop for in air calculations and photos - and landing
 
 void loop() {
   float pressure = readPressure();                       // Read air pressure
