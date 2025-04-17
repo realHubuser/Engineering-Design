@@ -1,8 +1,5 @@
 #include <Wire.h>
 #include <Servo.h>
-#include <SPI.h>
-#include <SD.h>
-#include <ArduCAM.h>
 
 
 // BMP180 I2C address
