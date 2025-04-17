@@ -1,0 +1,184 @@
+#include <Wire.h>
+#include <Servo.h>
+#include <SPI.h>
+#include <SD.h>
+#include <ArduCAM.h>
+#include "memorysaver.h"  // Make sure your camera model is enabled here
+
+// === BMP180 Setup ===
+#define BMP180_ADDRESS 0x77
+
+// === Servo Setup ===
+Servo servo;
+#define SERVO_PIN 9
+
+// === Ultrasonic Sensor ===
+#define TRIG_PIN 7
+#define ECHO_PIN 6
+
+// === ArduCAM Setup ===
+#define CS_PIN 10
+ArduCAM myCAM(OV2640, CS_PIN); // Adjust if using a different camera
+
+// === Altitude Parameters ===
+const float targetAltitude = 10.0;   // meters
+const float landingThreshold = 0.5;  // meters
+
+// === State Flags ===
+bool hasReachedAltitude = false;
+bool hasLanded = false;
+bool hasCapturedPhoto = false;
+
+void setup() {
+  Serial.begin(115200);
+  Wire.begin();
+  SPI.begin();
+
+  // Servo + Ultrasonic
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(13, OUTPUT);
+  servo.attach(SERVO_PIN);
+  servo.write(0);  // Start position
+
+  // BMP180 check
+  if (!bmp180Init()) {
+    Serial.println("BMP180 not found!");
+    while (1);
+  }
+
+  // SD card check
+  if (!SD.begin()) {
+    Serial.println("SD Card init failed!");
+    while (1);
+  }
+
+  // Initialize camera
+  myCAM.set_format(JPEG);
+  myCAM.InitCAM();
+  myCAM.OV2640_set_JPEG_size(OV2640_640x480);
+  delay(1000);
+
+  Serial.println("System ready. Waiting for altitude...");
+}
+
+void loop() {
+  float pressure = readPressure();
+  float currentAltitude = calculateAltitude(pressure);
+  float groundDistance = readUltrasonicDistance();
+
+  Serial.print("Altitude: ");
+  Serial.print(currentAltitude);
+  Serial.print(" m | Ground Distance: ");
+  Serial.print(groundDistance);
+  Serial.println(" m");
+
+  // Reached target altitude
+  if (!hasReachedAltitude && currentAltitude >= targetAltitude) {
+    Serial.println("Target altitude reached!");
+    digitalWrite(13, HIGH);
+    hasReachedAltitude = true;
+
+    servo.write(30);
+    Serial.println("Servo rotated to 30 degrees.");
+
+    if (!hasCapturedPhoto) {
+      Serial.println("Capturing photo...");
+      capturePhoto();
+      hasCapturedPhoto = true;
+    }
+  }
+
+  // Landing detected
+  if (hasReachedAltitude && !hasLanded && groundDistance <= landingThreshold) {
+    Serial.println("Landing detected!");
+    digitalWrite(13, LOW);
+    hasLanded = true;
+  }
+
+  delay(1000);
+}
+
+// === Ultrasonic Distance Function ===
+float readUltrasonicDistance() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  long duration = pulseIn(ECHO_PIN, HIGH);
+  float distance_cm = duration * 0.034 / 2;
+  return distance_cm / 100.0;
+}
+
+// === BMP180 Functions ===
+bool bmp180Init() {
+  Wire.beginTransmission(BMP180_ADDRESS);
+  return Wire.endTransmission() == 0;
+}
+
+int32_t readRawPressure() {
+  Wire.beginTransmission(BMP180_ADDRESS);
+  Wire.write(0xF4);
+  Wire.write(0x34); // Request pressure measurement
+  Wire.endTransmission();
+  delay(10);
+
+  Wire.beginTransmission(BMP180_ADDRESS);
+  Wire.write(0xF6);
+  Wire.endTransmission();
+  Wire.requestFrom(BMP180_ADDRESS, 3);
+
+  int32_t msb = Wire.read();
+  int32_t lsb = Wire.read();
+  int32_t xlsb = Wire.read();
+
+  return ((msb << 16) + (lsb << 8) + xlsb) >> 8;
+}
+
+float readPressure() {
+  int32_t raw = readRawPressure();
+  return raw * (1.0 / 1.2);  // Simplified demo scaling
+}
+
+float calculateAltitude(float pressure) {
+  return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903));
+}
+
+// === Camera Photo Capture ===
+void capturePhoto() {
+  char filename[15];
+  static int photoIndex = 0;
+  sprintf(filename, "IMG_%03d.JPG", photoIndex++);
+
+  myCAM.flush_fifo();
+  myCAM.clear_fifo_flag();
+  myCAM.start_capture();
+
+  Serial.println("Waiting for capture to complete...");
+  while (!myCAM.get_bit(ARDUCHIP_TRIG, CAP_DONE_MASK));
+
+  File imgFile = SD.open(filename, FILE_WRITE);
+  if (!imgFile) {
+    Serial.println("Failed to open file for writing!");
+    return;
+  }
+
+  Serial.print("Saving photo as ");
+  Serial.println(filename);
+
+  uint8_t buf[256];
+  uint32_t length = myCAM.read_fifo_length();
+  myCAM.CS_LOW();
+  myCAM.set_fifo_burst();
+
+  while (length--) {
+    buf[0] = SPI.transfer(0x00);
+    imgFile.write(buf[0]);
+  }
+
+  myCAM.CS_HIGH();
+  imgFile.close();
+  Serial.println("Photo saved!");
+}
