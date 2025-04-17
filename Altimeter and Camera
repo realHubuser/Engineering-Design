@@ -21,7 +21,7 @@ Servo servo;
 
 // Camera
 #define CS_PIN 10                     // Chip Select pin for camera
-ArduCAM myCAM(OV2640, CS_PIN);       // Using an OV2640 cam, adjust if needed
+ArduCAM myCAM(OV2640, CS_PIN);        // Using an OV2640 cam, adjust if needed
 
 // ========== Settings ==========
 
@@ -81,13 +81,13 @@ void loop() {
   // Print some info to the Serial Monitor
   Serial.print("Altitude: ");
   Serial.print(currentAltitude);
-  Serial.print(" m | Ground Distance: ");
+  Serial.print("Ground Distance: ");
   Serial.print(groundDistance);
   Serial.println(" m"); // In meters
 
   // If we're high enough and haven't triggered yet...
   if (!hasReachedAltitude && currentAltitude >= targetAltitude) {
-    Serial.println("We've reached 10 meters! Time to do stuff!");
+    Serial.println("Target altitude reached.");
     digitalWrite(13, HIGH);   // Turn on LED
     hasReachedAltitude = true;
 
@@ -178,7 +178,7 @@ void capturePhoto() {
 
   File imgFile = SD.open(filename, FILE_WRITE);
   if (!imgFile) {
-    Serial.println("Uh oh, can’t open file to save!");
+    Serial.println("Can’t open file to save!");
     return;
   }
 
