@@ -103,7 +103,7 @@ void loop() {
 
   // If we already went up and now we're near the ground...
   if (hasReachedAltitude && !hasLanded && groundDistance <= landingThreshold) {
-    Serial.println("Touchdown! We're back on the ground.");
+    Serial.println("Landed. Back on the ground.");
     digitalWrite(13, LOW);    // Turn off LED
     hasLanded = true; // Now let program know we have landed
   }
@@ -160,7 +160,7 @@ float readPressure() {
 
 // Calculate altitude from pressure
 float calculateAltitude(float pressure) {
-  return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903)); // Science-y formula
+  return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903)); // Formula for altitude from pressure
 }
 
 // Take a photo and save it to SD card
