@@ -2,7 +2,7 @@
 #include <Wire.h>          // for I2C (talking to the pressure sensor)
 #include <Servo.h>         // to control the servo motor
 #include <SPI.h>           // to talk to SD card and camera
-#include <SD.h>            // SD card stuff
+#include <SD.h>            // SD card
 #include <ArduCAM.h>       // ArduCAM library for the camera
 #include "memorysaver.h"   // Tells ArduCAM what camera we're using
 
@@ -25,13 +25,13 @@ ArduCAM myCAM(OV2640, CS_PIN);       // Using an OV2640 cam, adjust if needed
 
 // ========== Settings ==========
 
-const float targetAltitude = 10.0;   // When we reach 10 meters, do stuff!
+const float targetAltitude = 10.0;   // Target altitude is defined as 10 meters
 const float landingThreshold = 0.5;  // When we're 0.5 meters from ground = landed
 
 // ========== Status Flags ==========
-bool hasReachedAltitude = false;    // Have we gone high enough yet?
-bool hasLanded = false;             // Are we on the ground again?
-bool hasCapturedPhoto = false;      // Did we take the photo?
+bool hasReachedAltitude = false;    // Set condition to detect if we have reached altitude
+bool hasLanded = false;             // Set condition to detect if we have landed
+bool hasCapturedPhoto = false;      // Set condition to detect if we have taken the photo
 
 // ========== SETUP ==========
 
