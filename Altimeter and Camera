@@ -59,12 +59,24 @@ void setup() {
   // }
 
   Serial.println("System ready. Waiting for liftoff!");
+  
+  //DEBUG CAMERA
+  float pressure = readPressure();                       // Read air pressure
+  float currentAltitude = calculateAltitude(pressure);   // Calculate altitude through pressure variable
+  float groundDistance = readUltrasonicDistance();
+  Serial.print("Altitude: ");
+  Serial.print(currentAltitude);
+  Serial.print("Ground Distance: ");
+  Serial.print(groundDistance);
+  Serial.println(" m"); // In meters
+
 }
 
 // ========== LOOP ==========
 //Here is the loop for in air calculations and photos - and landing
 
 void loop() {
+  /*
   float pressure = readPressure();                       // Read air pressure
   float currentAltitude = calculateAltitude(pressure);   // Calculate altitude through pressure variable
   float groundDistance = readUltrasonicDistance();       // Read how far we are from the ground
@@ -90,6 +102,7 @@ void loop() {
       digitalWrite(CAMERA_CONTROL_PIN, HIGH); // Power on or simulate button press
       hasCapturedPhoto = true;
     }
+    */
   }
 
   // If we already went up and now we're near the ground...
@@ -154,3 +167,4 @@ float readPressure() {
 float calculateAltitude(float pressure) {
   return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903)); // Formula for altitude from pressure
 }
+
