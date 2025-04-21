@@ -1,10 +1,7 @@
 // Includes libraries for stuff we're using
 #include <Wire.h>          // for I2C (talking to the pressure sensor)
 #include <Servo.h>         // to control the servo motor
-#include <SPI.h>           // to talk to SD card and camera
-#include <SD.h>            // SD card
-#include <ArduCAM.h>       // ArduCAM library for the camera
-#include "memorysaver.h"   // Tells ArduCAM what camera we're using
+#include <SD.h>            // SD card (optional, not used for camera now)
 
 // ========== Sensors & Pins ==========
 
@@ -19,9 +16,8 @@ Servo servo;
 #define TRIG_PIN 7
 #define ECHO_PIN 6
 
-// Camera
-#define CS_PIN 10                     // Chip Select pin for camera
-ArduCAM myCAM(OV2640, CS_PIN);        // Using an OV2640 cam, adjust if needed
+// SQ11 Camera (power control or trigger simulation)
+#define CAMERA_CONTROL_PIN 8   // Use transistor or relay to simulate button or power
 
 // ========== Settings ==========
 
@@ -39,12 +35,13 @@ bool hasCapturedPhoto = false;      // Set condition to detect if we have taken 
 void setup() {
   Serial.begin(115200);         // Start talking to computer
   Wire.begin();                 // Start I2C for pressure sensor
-  SPI.begin();                  // Start SPI for camera + SD
 
   // Setup pins
   pinMode(TRIG_PIN, OUTPUT);
   pinMode(ECHO_PIN, INPUT);
   pinMode(13, OUTPUT);          // Built-in LED on Arduino
+  pinMode(CAMERA_CONTROL_PIN, OUTPUT);
+  digitalWrite(CAMERA_CONTROL_PIN, LOW); // Start with camera off
 
   servo.attach(SERVO_PIN);      // Hook up the servo
   servo.write(0);               // Set it to the start position
@@ -55,17 +52,11 @@ void setup() {
     while (1); // Stop everything if no sensor
   }
 
-  // Check SD card
-  if (!SD.begin()) {
-    Serial.println("SD Card init failed!");
-    while (1); // Stop if no SD card
-  }
-
-  // Set up the camera
-  myCAM.set_format(JPEG);                           // We're taking the photos in JPEG format
-  myCAM.InitCAM();                                  // Initialize camera
-  myCAM.OV2640_set_JPEG_size(OV2640_640x480);       // Set photo size
-  delay(1000); // delay a little
+  // (Optional) Check SD card if you're using it for anything else
+  // if (!SD.begin()) {
+  //   Serial.println("SD Card init failed!");
+  //   while (1); // Stop if no SD card
+  // }
 
   Serial.println("System ready. Waiting for liftoff!");
 }
@@ -95,8 +86,8 @@ void loop() {
     Serial.println("Servo moved!");
 
     if (!hasCapturedPhoto) {
-      Serial.println("Taking a photo...");
-      capturePhoto();         // Take photo
+      Serial.println("Turning on the SQ11 camera...");
+      digitalWrite(CAMERA_CONTROL_PIN, HIGH); // Power on or simulate button press
       hasCapturedPhoto = true;
     }
   }
@@ -105,6 +96,7 @@ void loop() {
   if (hasReachedAltitude && !hasLanded && groundDistance <= landingThreshold) {
     Serial.println("Landed. Back on the ground.");
     digitalWrite(13, LOW);    // Turn off LED
+    digitalWrite(CAMERA_CONTROL_PIN, LOW); // Turn off camera or stop recording
     hasLanded = true; // Now let program know we have landed
   }
 
@@ -161,41 +153,4 @@ float readPressure() {
 // Calculate altitude from pressure
 float calculateAltitude(float pressure) {
   return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903)); // Formula for altitude from pressure
-}
-
-// Take a photo and save it to SD card
-void capturePhoto() {
-  char filename[15];
-  static int photoIndex = 0;
-  sprintf(filename, "IMG_%03d.JPG", photoIndex++);  // Name like IMG_001.JPG
-
-  myCAM.flush_fifo();
-  myCAM.clear_fifo_flag();
-  myCAM.start_capture();
-
-  Serial.println("Waiting for camera to finish...");
-  while (!myCAM.get_bit(ARDUCHIP_TRIG, CAP_DONE_MASK)); // Wait until done
-
-  File imgFile = SD.open(filename, FILE_WRITE);
-  if (!imgFile) {
-    Serial.println("Can’t open file to save!");
-    return;
-  }
-
-  Serial.print("Saving to: ");
-  Serial.println(filename);
-
-  uint8_t buf[256];
-  uint32_t length = myCAM.read_fifo_length(); // how much data
-  myCAM.CS_LOW();
-  myCAM.set_fifo_burst();                     // fast read mode
-
-  while (length--) {
-    buf[0] = SPI.transfer(0x00);
-    imgFile.write(buf[0]);                   // write each byte to SD
-  }
-
-  myCAM.CS_HIGH();
-  imgFile.close(); // done!
-  Serial.println("Photo saved!");
 }
