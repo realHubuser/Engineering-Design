@@ -1,6 +1,6 @@
 #include <Wire.h>
 #include <Servo.h>
-
+#include <math.h>
 #define BMP180_ADDRESS 0x77
 #define TRIG_PIN 7
 #define ECHO_PIN 6
@@ -9,7 +9,8 @@
 Servo servo;
 
 int previousAltitudeDigit = -1;
-
+bool buttonDown = false;
+int timer = 0;
 void setup() {
   Serial.begin(9600);
   Wire.begin();
@@ -31,23 +32,29 @@ void setup() {
 void loop() {
   float pressure = readPressure();
   float altitude = calculateAltitude(pressure);
+  timer-= 1;
+  int altitudeDigit = round(altitude / 5) * 5; 
 
-  int altitudeDigit = (int)altitude % 10;
-
-  if (altitudeDigit != previousAltitudeDigit) {
+  if ((altitudeDigit != previousAltitudeDigit) && (timer >0)) {
     previousAltitudeDigit = altitudeDigit;
-
-    // Rotate then return
-    servo.write(45);
+    servo.write(90);
     Serial.print("Altitude: ");
-    Serial.print(altitude);
+    Serial.println(altitude);
     Serial.println(" m → Servo to 45°");
-    delay(500);
-    servo.write(0);
-    Serial.println("Servo back to 0°");
+    buttonDown = true;
+    timer = 10;
+    }
   }
 
-  delay(200);
+  if(timer < 1)
+  {
+    servo.write(0);
+    Serial.println("Servo back to 0°");
+    buttonDown = false;
+  }
+  
+
+
 }
 
 // === BMP180 Setup and Reading ===
@@ -83,3 +90,4 @@ float readPressure() {
 float calculateAltitude(float pressure) {
   return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903));
 }
+
