@@ -41,10 +41,9 @@ void loop() {
     servo.write(45);
     Serial.print("Altitude: ");
     Serial.print(altitude);
-    Serial.println(" m → Servo to 45°");
+    Serial.println(" m → Take Picture");
     delay(500);
     servo.write(0);
-    Serial.println("Servo back to 0°");
   }
 
   delay(200);
