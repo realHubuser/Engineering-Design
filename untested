@@ -1,30 +1,30 @@
-#include <Wire.h>
-#include <Servo.h>
-#include <math.h>
-#include <time.h> 
-#define BMP180_ADDRESS 0x77
-#define TRIG_PIN 7
-#define ECHO_PIN 6
-#define SERVO_PIN 3
+#include <Wire.h> //To communicate with sensors
+#include <Servo.h> //To control servo monitor
+#include <math.h> //For math functions
+#include <time.h> //To track time
+#define BMP180_ADDRESS 0x77 //Pressure sensor
+#define TRIG_PIN 7 //Trigger pin for ultrasonic sensor
+#define ECHO_PIN 6 //Echo pin for ultrasonic sensor
+#define SERVO_PIN 3 //Pin for servo monitor
 
-Servo servo;
+Servo servo; //Creating a servo object
 
-int previousAltitudeDigit = -1;
-int timer = 0;
+int previousAltitudeDigit = -1; //Tracks previous calculated altitude for comparison
+int timer = 0; //Timer for servo
 
 void setup() {
-  Serial.begin(9600);
-  Wire.begin();
+  Serial.begin(9600); //Start serial communication
+  Wire.begin(); //Start communication
 
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
+  pinMode(TRIG_PIN, OUTPUT); //Trig pin
+  pinMode(ECHO_PIN, INPUT); //Echo pin
 
-  servo.attach(SERVO_PIN);
-  servo.write(0); // Start at 0 degrees
+  servo.attach(SERVO_PIN); //Attach servo to servo pin defined above
+  servo.write(0); // Start servo position at 0 degrees
 
-  if (!bmp180Init()) {
+  if (!bmp180Init()) { //Check if sensor is connected
     Serial.println("BMP180 not found!");
-    while (1);
+    while (1); //Stop while sensor is not found
   }
 
   Serial.println("Tracking altitude...");
@@ -34,12 +34,14 @@ void loop() {
 
 
   
-  float pressure = readPressure();
-  float altitude = calculateAltitude(pressure);
+  float pressure = readPressure(); //read pressure
+  float altitude = calculateAltitude(pressure); //convert to altitude
 
-  int altitudeDigit = round(altitude / 5) * 5;
+  int altitudeDigit = round(altitude / 5) * 5; //round altitude to nearest multiple of 5 meters
 
-  CheckTakePicture(clock(), 44.1, 44.1, 5);
+  CheckTakePicture(clock(), 44.1, 44.1, 5); //Custom function, check if picture should be taken
+
+//Original logic to check if altitude has changed significantly starts here
   /*
   if ((altitudeDigit != previousAltitudeDigit) && (timer <= 0)) {
 
@@ -59,49 +61,53 @@ void loop() {
     servo.write(0);
     Serial.println("unwind");
   } */
+//Original logic ends here
 
 }
 
+// === Function to determine picture-taking timing ===
 void CheckTakePicture(float timer, float StartH, float fallingDist, int numberOfPics) //checks if we should take a picture right now
 {
-  float distPerSnap = fallingDist / numberOfPics;
-  float altitude = timer * timer * -9.81 + StartH;
-  if(round(altitude) % round(distPerSnap) == 0)
+  float distPerSnap = fallingDist / numberOfPics; //How many pictures we take depends on the distance
+  float altitude = timer * timer * -9.81 + StartH; //Estimate altitude
+  if(round(altitude) % round(distPerSnap) == 0) //Check if current altitude is at a picture point
   {
-    //take picture
+    //TAKE PICTURE CODE SHOULD BE HERE
   }
 }
 
 // === BMP180 Setup and Reading ===
-bool bmp180Init() {
+bool bmp180Init() { //Initialize BMP180
   Wire.beginTransmission(BMP180_ADDRESS);
   return Wire.endTransmission() == 0;
 }
 
-int32_t readRawPressure() {
+int32_t readRawPressure() { //Request pressure data from sensor
   Wire.beginTransmission(BMP180_ADDRESS);
   Wire.write(0xF4);
-  Wire.write(0x34);
+  Wire.write(0x34); //Command to start pressure reading
   Wire.endTransmission();
-  delay(10);
+  delay(10); //Wait for measurement
 
   Wire.beginTransmission(BMP180_ADDRESS);
   Wire.write(0xF6);
   Wire.endTransmission();
-  Wire.requestFrom(BMP180_ADDRESS, 3);
+  Wire.requestFrom(BMP180_ADDRESS, 3); //Request 3 bytes
 
-  int32_t msb = Wire.read();
-  int32_t lsb = Wire.read();
-  int32_t xlsb = Wire.read();
+  int32_t msb = Wire.read(); //Most significant byte
+  int32_t lsb = Wire.read(); //Least significant byte
+  int32_t xlsb = Wire.read(); //Extra byte
 
-  return ((msb << 16) + (lsb << 8) + xlsb) >> 8;
+  return ((msb << 16) + (lsb << 8) + xlsb) >> 8; //Combine bytes into a single 24-bit value, then shift for 16-bit result
 }
 
+//Convert raw pressure value to actual pressure
 float readPressure() {
   int32_t raw = readRawPressure();
   return raw * (1.0 / 1.2); // Approximate scaling
 }
 
+//Estimate altitude from pressure using barometric formula
 float calculateAltitude(float pressure) {
   return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903));
 }
