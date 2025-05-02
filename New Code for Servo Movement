@@ -1,0 +1,74 @@
+#include <Wire.h> // To communicate with sensors
+#include <Servo.h> // To control servo monitor
+#include <math.h> // For math functions
+#include <time.h> // To track time
+
+#define TRIG_PIN 7 // Trigger pin for ultrasonic sensor
+#define ECHO_PIN 6 // Echo pin for ultrasonic sensor
+#define SERVO_PIN 3 // Pin for servo monitor
+
+Servo servo; // Creating a servo object
+
+int previousAltitudeDigit = -1; // Tracks previous calculated altitude for comparison
+int timer = 0; // Timer for servo
+
+void setup() {
+  Serial.begin(9600); // Start serial communication
+
+  pinMode(TRIG_PIN, OUTPUT); // Trig pin
+  pinMode(ECHO_PIN, INPUT); // Echo pin
+
+  servo.attach(SERVO_PIN); // Attach servo to the defined pin
+  servo.write(0); // Start servo position at 0 degrees
+
+  Serial.println("Servo control system initialized.");
+}
+
+void loop() {
+  // Estimate altitude and other sensor readings
+  float altitude = 100; // Just a placeholder for the altitude
+
+  // Simulate the altitude changes
+  int altitudeDigit = round(altitude / 5) * 5; // Round altitude to nearest multiple of 5 meters
+
+  CheckTakePicture(altitude, altitudeDigit, 5); // Check if a picture should be taken
+
+ //Picture trigger
+  if (altitudeDigit != previousAltitudeDigit && timer <= 0) {
+    previousAltitudeDigit = altitudeDigit; // Save the new altitude digit
+
+    // Rotate the servo arm to simulate picture-taking
+    servo.write(45); // Move servo to 45 degrees
+    Serial.println("Servo moved to 45 degrees to simulate picture taking");
+
+    timer = 30; // Set timer countdown for the next picture-taking action
+  }
+
+  // Timer countdown logic (decrement timer)
+  if (timer > 0) {
+    timer--;
+  }
+
+  if (timer == 0) {
+    // Move the servo back to 0 degrees
+    servo.write(0);
+    Serial.println("Servo moved back to 0 degrees");
+  }
+
+  delay(100); // Delay to make sure the loop runs smoothly and doesn't freeze
+}
+
+// === Function to simulate picture-taking ===
+void CheckTakePicture(float altitude, int altitudeDigit, int numberOfPics) {
+  // Just a simple condition to simulate taking a picture when certain altitude is reached
+  if (altitudeDigit % 5 == 0 && timer <= 0) {
+    Serial.println("Servo arm moving...");
+    // Code to move the servo arm
+    servo.write(45);  // Move servo arm to 45 degrees
+    delay(500);  // Wait for servo to reach position
+
+    // After taking the picture, move the servo back
+    servo.write(0);  // Move servo back to 0 degrees
+    delay(500);  // Wait for servo to return to position
+  }
+}
