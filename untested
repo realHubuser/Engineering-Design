@@ -1,0 +1,107 @@
+#include <Wire.h>
+#include <Servo.h>
+#include <math.h>
+#include <time.h> 
+#define BMP180_ADDRESS 0x77
+#define TRIG_PIN 7
+#define ECHO_PIN 6
+#define SERVO_PIN 3
+
+Servo servo;
+
+int previousAltitudeDigit = -1;
+int timer = 0;
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  servo.attach(SERVO_PIN);
+  servo.write(0); // Start at 0 degrees
+
+  if (!bmp180Init()) {
+    Serial.println("BMP180 not found!");
+    while (1);
+  }
+
+  Serial.println("Tracking altitude...");
+}
+
+void loop() {
+
+
+  
+  float pressure = readPressure();
+  float altitude = calculateAltitude(pressure);
+
+  int altitudeDigit = round(altitude / 5) * 5;
+
+  CheckTakePicture(clock(), 44.1, 44.1, 5);
+  /*
+  if ((altitudeDigit != previousAltitudeDigit) && (timer <= 0)) {
+
+    previousAltitudeDigit = altitudeDigit;
+
+    // Rotate then return
+    servo.write(45);
+    Serial.print("Altitude: ");
+    Serial.print(altitude);
+    Serial.print(altitudeDigit);
+    Serial.println(" m → Take Picture");
+    timer = 30;
+  }
+
+  if(timer == 0)
+  {
+    servo.write(0);
+    Serial.println("unwind");
+  } */
+
+}
+
+void CheckTakePicture(float timer, float StartH, float fallingDist, int numberOfPics) //checks if we should take a picture right now
+{
+  float distPerSnap = fallingDist / numberOfPics;
+  float altitude = timer * timer * -9.81 + StartH;
+  if(round(altitude) % round(distPerSnap) == 0)
+  {
+    //take picture
+  }
+}
+
+// === BMP180 Setup and Reading ===
+bool bmp180Init() {
+  Wire.beginTransmission(BMP180_ADDRESS);
+  return Wire.endTransmission() == 0;
+}
+
+int32_t readRawPressure() {
+  Wire.beginTransmission(BMP180_ADDRESS);
+  Wire.write(0xF4);
+  Wire.write(0x34);
+  Wire.endTransmission();
+  delay(10);
+
+  Wire.beginTransmission(BMP180_ADDRESS);
+  Wire.write(0xF6);
+  Wire.endTransmission();
+  Wire.requestFrom(BMP180_ADDRESS, 3);
+
+  int32_t msb = Wire.read();
+  int32_t lsb = Wire.read();
+  int32_t xlsb = Wire.read();
+
+  return ((msb << 16) + (lsb << 8) + xlsb) >> 8;
+}
+
+float readPressure() {
+  int32_t raw = readRawPressure();
+  return raw * (1.0 / 1.2); // Approximate scaling
+}
+
+float calculateAltitude(float pressure) {
+  return 44330.0 * (1.0 - pow(pressure / 101325.0, 0.1903));
+}
