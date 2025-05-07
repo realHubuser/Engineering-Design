@@ -12,6 +12,7 @@
 #define ECHO_PIN 6 //Echo pin for ultrasonic sensor
 #define SERVO_PIN 3 //Pin for servo monitor
 #define CS_PIN 10 //Chip select pin for ArduCam
+#define BUZZER_PIN 9
 
 Servo servo; //Creating a servo object
 //ArduCAM myCAM(OV2640, CS_PIN); //Create camera object
@@ -27,6 +28,7 @@ void setup() {
 
   pinMode(TRIG_PIN, OUTPUT); //Trig pin
   pinMode(ECHO_PIN, INPUT); //Echo pin
+  pinMode(BUZZER_PIN, OUTPUT); //Buzzer pin
 
   servo.attach(SERVO_PIN); //Attach servo to servo pin defined above
   servo.write(0); // Start servo position at 0 degrees
@@ -115,6 +117,7 @@ void CheckTakePicture(float clock, float StartH, float fallingDist, int numberOf
     Serial.println("Capturing frame...");
     servo.write(90);
     buttonDown = true;
+    tone(BUZZER_PIN, 261, 2000);
     }   
     
     timer = 50;
